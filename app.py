@@ -410,7 +410,7 @@ with tab1:
         arrowcolor="#ef4444",
         ax=-70, ay=-40,
         font=dict(color="#f8fafc", size=10),
-        bgcolor="#ef444488"
+        bgcolor="rgba(239, 68, 68, 0.5)"
     )
     fig_diurnal.update_layout(
         paper_bgcolor='rgba(0,0,0,0)',
