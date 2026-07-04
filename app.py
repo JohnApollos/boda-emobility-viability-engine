@@ -605,20 +605,16 @@ with tab3:
             color = "#ef4444" # Muted Red
             label = "High Risk Profile"
             
-        st.markdown(f"""
-        <div style="background-color: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 16px; margin: 15px 0 10px 0;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <span style="font-size: 0.8rem; color: #94a3b8; font-weight:600; text-transform: uppercase;">Repayment Risk Score</span>
-                <span style="font-size: 0.85rem; color: {color}; font-weight: 700; text-transform: uppercase;">{label}</span>
-            </div>
-            <div style="font-size: 2rem; font-weight: 800; color: #ffffff; line-height: 1;">{prob * 100:.1f}%</div>
-            
-            <!-- Custom Styled Linear Progress Bar -->
-            <div style="background-color: #334155; border-radius: 4px; height: 8px; width: 100%; margin-top: 12px; overflow: hidden;">
-                <div style="background-color: {color}; width: {prob*100}%; height: 8px; border-radius: 4px;"></div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"""<div style="background-color: #0f172a; border: 1px solid #334155; border-radius: 6px; padding: 16px; margin: 15px 0 10px 0;">
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+<span style="font-size: 0.8rem; color: #94a3b8; font-weight:600; text-transform: uppercase;">Repayment Risk Score</span>
+<span style="font-size: 0.85rem; color: {color}; font-weight: 700; text-transform: uppercase;">{label}</span>
+</div>
+<div style="font-size: 2rem; font-weight: 800; color: #ffffff; line-height: 1;">{prob * 100:.1f}%</div>
+<div style="background-color: #334155; border-radius: 4px; height: 8px; width: 100%; margin-top: 12px; overflow: hidden;">
+<div style="background-color: {color}; width: {prob*100}%; height: 8px; border-radius: 4px;"></div>
+</div>
+</div>""", unsafe_allow_html=True)
         
         reduced_prob = risk_model.predict_probability(1.0, r_vol, r_inc, savings)
         st.markdown(f"""
@@ -645,27 +641,22 @@ with tab3:
         # Expected Loss calculation (Average vehicle cost KES 450,000)
         mitigated_loss = (risk_before['expected_default_rate'] - risk_after['expected_default_rate']) / 100.0 * 1000 * 450000
         
-        st.markdown(f"""
-        <div class="dashboard-card" style="padding: 16px; margin-bottom: 0px;">
-            <div style="font-size: 0.8rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; margin-bottom: 12px;">GIS-Credit Feedback Loop</div>
-            
-            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem;">
-                <span style="color: #94a3b8;">Portfolio Default Rate:</span>
-                <span style="font-weight: 700; color: #ffffff;">{risk_before['expected_default_rate']:.2f}% &rarr; <span style="color: #10b981;">{risk_after['expected_default_rate']:.2f}%</span></span>
-            </div>
-            
-            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem;">
-                <span style="color: #94a3b8;">High-Risk Riders (>15%):</span>
-                <span style="font-weight: 700; color: #ffffff;">{risk_before['high_risk_riders_count']} &rarr; <span style="color: #10b981;">{risk_after['high_risk_riders_count']}</span></span>
-            </div>
-            
-            <div style="border-top: 1px solid #334155; margin-top: 12px; padding-top: 12px;">
-                <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px;">Capital Exposure Mitigated</div>
-                <div style="font-size: 1.4rem; font-weight: 800; color: #10b981;">KES {mitigated_loss:,.0f}</div>
-                <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 4px;">Based on a fleet size of 1,000 riders. Adding <b>{n_rec} new stations</b> reduces overall default exposure.</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"""<div class="dashboard-card" style="padding: 16px; margin-bottom: 0px;">
+<div style="font-size: 0.8rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; margin-bottom: 12px;">GIS-Credit Feedback Loop</div>
+<div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem;">
+<span style="color: #94a3b8;">Portfolio Default Rate:</span>
+<span style="font-weight: 700; color: #ffffff;">{risk_before['expected_default_rate']:.2f}% &rarr; <span style="color: #10b981;">{risk_after['expected_default_rate']:.2f}%</span></span>
+</div>
+<div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem;">
+<span style="color: #94a3b8;">High-Risk Riders (>15%):</span>
+<span style="font-weight: 700; color: #ffffff;">{risk_before['high_risk_riders_count']} &rarr; <span style="color: #10b981;">{risk_after['high_risk_riders_count']}</span></span>
+</div>
+<div style="border-top: 1px solid #334155; margin-top: 12px; padding-top: 12px;">
+<div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px;">Capital Exposure Mitigated</div>
+<div style="font-size: 1.4rem; font-weight: 800; color: #10b981;">KES {mitigated_loss:,.0f}</div>
+<div style="font-size: 0.75rem; color: #94a3b8; margin-top: 4px;">Based on a fleet size of 1,000 riders. Adding <b>{n_rec} new stations</b> reduces overall default exposure.</div>
+</div>
+</div>""", unsafe_allow_html=True)
         
     with col_model:
         st.markdown("#### Model Standardized Feature Importances")
