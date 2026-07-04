@@ -88,20 +88,39 @@ Rather than using generic assumptions, the engine's parameters are grounded in p
 ### Prerequisites
 Make sure Python 3.10+ is installed on your system.
 
-### 1. Clone the Repository and Navigate to the Folder
+### 1. Clone the Repository and Navigate to the Directory
 ```bash
-cd c:/dev/emobility
+git clone https://github.com/JohnApollos/boda-emobility-viability-engine.git
+cd boda-emobility-viability-engine
 ```
 
-### 2. Install Dependencies
+### 2. Configure Virtual Environment (Optional but Recommended)
+```bash
+# Create virtual environment
+python -m venv venv
+
+# Activate virtual environment
+# On Windows (Command Prompt):
+venv\Scripts\activate
+# On Windows (PowerShell):
+.\venv\Scripts\activate
+# On macOS / Linux:
+source venv/bin/activate
+```
+
+### 3. Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Run the Dashboard
+### 4. Launch the Streamlit Dashboard
 ```bash
 streamlit run app.py
 ```
-This command will:
-1. Run `src/data_processor.py` to compile KNBS demographics and generate the simulated datasets in the `data/` directory.
-2. Launch the Streamlit server and open the interactive dashboard in your browser.
+
+### Note on Automatic Data Generation
+On the first execution, the application will automatically:
+1. Parse population demographics directly from the official KNBS Census PDF inside the repository.
+2. Initialize the baseline competitor swap networks (20 cabinets across Nairobi).
+3. Simulate and save the cohort of 1,000 borrower PAYG credit profiles.
+These datasets are written to the `data/` directory and cached for subsequent sessions.
