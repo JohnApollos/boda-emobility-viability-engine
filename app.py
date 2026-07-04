@@ -197,8 +197,21 @@ def render_html_table(df):
 def calculate_rider_distances_custom(riders_df, stations_df, df_recs=None, enable_interop=False):
     """Calculates distances to the nearest swap station for all riders incorporating optional brand interoperability."""
     distances = []
-    for _, rider in riders_df.iterrows():
-        r_brand = rider["Brand"]
+    for idx, rider in riders_df.iterrows():
+        # Fallback if Brand column is not in CSV
+        if "Brand" in riders_df.columns:
+            r_brand = rider["Brand"]
+        elif "brand" in riders_df.columns:
+            r_brand = rider["brand"]
+        else:
+            # Deterministic brand distribution matching market shares:
+            # 40% Ampersand, 35% Spiro, 25% ARC Ride
+            if idx % 20 < 8:
+                r_brand = "Ampersand"
+            elif idx % 20 < 15:
+                r_brand = "Spiro"
+            else:
+                r_brand = "ARC Ride"
         
         # In interoperability mode, Ampersand and ARC Ride share networks
         if enable_interop and r_brand in ["Ampersand", "ARC Ride"]:
