@@ -183,7 +183,7 @@ st.markdown("""
 # Imports from src
 from src.data_processor import generate_datasets, haversine_distance
 from src.risk_model import PAYGRiskModel
-from src.optimizer import NetworkOptimizer
+from src.optimizer import NetworkOptimizer, haversine_distance_vectorized
 
 # Check if data exists; if not, generate it
 if not os.path.exists("data/rider_loans.csv") or not os.path.exists("data/existing_stations.csv"):
@@ -193,6 +193,34 @@ if not os.path.exists("data/rider_loans.csv") or not os.path.exists("data/existi
 def render_html_table(df):
     """Converts a pandas DataFrame to a beautiful custom HTML table fitting the dark dashboard style."""
     return df.to_html(classes="custom-table", index=False, escape=False)
+
+def calculate_rider_distances_custom(riders_df, stations_df, df_recs=None, enable_interop=False):
+    """Calculates distances to the nearest swap station for all riders incorporating optional brand interoperability."""
+    distances = []
+    for _, rider in riders_df.iterrows():
+        r_brand = rider["Brand"]
+        
+        # In interoperability mode, Ampersand and ARC Ride share networks
+        if enable_interop and r_brand in ["Ampersand", "ARC Ride"]:
+            allowed_brands = ["Ampersand", "ARC Ride"]
+        else:
+            allowed_brands = [r_brand]
+            
+        # Filter existing stations to allowed brands
+        brand_stations = stations_df[stations_df["brand"].isin(allowed_brands)]
+        
+        all_lats = brand_stations["lat"].values
+        all_lons = brand_stations["lon"].values
+        
+        # Combine with proposed recommendations if provided
+        if df_recs is not None and len(df_recs) > 0:
+            all_lats = np.concatenate([all_lats, df_recs["Latitude"].values])
+            all_lons = np.concatenate([all_lons, df_recs["Longitude"].values])
+            
+        dists = haversine_distance_vectorized(rider["Latitude"], rider["Longitude"], all_lats, all_lons)
+        distances.append(np.min(dists))
+        
+    return np.round(distances, 2)
 
 # Load datasets
 @st.cache_data
@@ -283,6 +311,12 @@ n_rec = st.sidebar.slider(
     value=10,
     step=1,
     help="Number of new swap station locations to be optimized via weighted K-Means."
+)
+
+enable_interop = st.sidebar.checkbox(
+    "Enable Network Interoperability (Open BaaS)",
+    value=False,
+    help="Simulate a shared battery-swapping network between Ampersand and ARC Ride to expand coverage without building new stations."
 )
 
 st.sidebar.markdown("""
@@ -549,6 +583,32 @@ with tab2:
         
         brand_coverages = optimizer.calculate_brand_coverage(threshold_km=swap_radius_input)
         
+        if enable_interop:
+            # Combined Ampersand + ARC Ride network
+            interop_stations = stations_df[stations_df["brand"].isin(["Ampersand", "ARC Ride"])]
+            covered_flags = []
+            total_weight = optimizer.grid_points["weight"].sum()
+            for _, pt in optimizer.grid_points.iterrows():
+                dists = haversine_distance_vectorized(pt["lat"], pt["lon"], interop_stations["lat"].values, interop_stations["lon"].values)
+                min_dist = np.min(dists)
+                covered_flags.append(1 if min_dist <= swap_radius_input else 0)
+            interop_cov = np.round((np.array(covered_flags) * optimizer.grid_points["weight"]).sum() / total_weight * 100.0, 1)
+            
+            st.markdown(f"""
+            <div style="margin-bottom: 15px; background-color: #1e293b; border: 1px solid #14b8a6; border-radius: 6px; padding: 12px; box-shadow: 0 0 10px rgba(20, 184, 166, 0.25);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.85rem;">
+                    <span style="font-weight: 700; color: #14b8a6; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em;">Shared Interop (Ampersand + ARC)</span>
+                    <span style="font-weight: 700; color: #14b8a6;">{interop_cov}%</span>
+                </div>
+                <div style="background-color: #0f172a; border-radius: 3px; height: 8px; width: 100%; overflow: hidden; margin-top: 4px;">
+                    <div style="background-color: #14b8a6; width: {interop_cov}%; height: 100%; border-radius: 3px;"></div>
+                </div>
+                <div style="font-size: 0.7rem; color: #94a3b8; margin-top: 6px; line-height: 1.2;">
+                    Cooperative network sharing provides a massive range expansion for both fleets without deploying new hardware.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
         # Display each brand's coverage rate
         for brand, cov in brand_coverages.items():
             color = "#10b981" if brand == "Ampersand" else ("#3b82f6" if brand == "Spiro" else "#f59e0b")
@@ -633,10 +693,13 @@ with tab3:
         
         # Calculate new distances incorporating Tab 4 recommendations
         df_recs = optimizer.recommend_stations(n_stations=n_rec, gap_threshold_km=swap_radius_input)
-        new_dists = optimizer.recalculate_rider_distances(df_recs, riders_df)
         
-        risk_before = risk_model.evaluate_portfolio_risk(riders_df)
-        risk_after = risk_model.evaluate_portfolio_risk(riders_df, new_dists)
+        # Recalculate baseline and current distances based on interop status and recommended sites
+        dists_baseline = calculate_rider_distances_custom(riders_df, stations_df, df_recs=None, enable_interop=False)
+        dists_current = calculate_rider_distances_custom(riders_df, stations_df, df_recs=df_recs, enable_interop=enable_interop)
+        
+        risk_before = risk_model.evaluate_portfolio_risk(riders_df, dists_baseline)
+        risk_after = risk_model.evaluate_portfolio_risk(riders_df, dists_current)
         
         # Expected Loss calculation (Average vehicle cost KES 450,000)
         mitigated_loss = (risk_before['expected_default_rate'] - risk_after['expected_default_rate']) / 100.0 * 1000 * 450000
@@ -654,7 +717,7 @@ with tab3:
 <div style="border-top: 1px solid #334155; margin-top: 12px; padding-top: 12px;">
 <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px;">Capital Exposure Mitigated</div>
 <div style="font-size: 1.4rem; font-weight: 800; color: #10b981;">KES {mitigated_loss:,.0f}</div>
-<div style="font-size: 0.75rem; color: #94a3b8; margin-top: 4px;">Based on a fleet size of 1,000 riders. Adding <b>{n_rec} new stations</b> reduces overall default exposure.</div>
+<div style="font-size: 0.75rem; color: #94a3b8; margin-top: 4px;">Based on a fleet size of 1,000 riders. {"Interoperability and adding" if enable_interop else "Adding"} <b>{n_rec} new stations</b> reduces overall default exposure.</div>
 </div>
 </div>""", unsafe_allow_html=True)
         
