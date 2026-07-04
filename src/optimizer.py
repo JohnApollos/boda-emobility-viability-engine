@@ -220,6 +220,46 @@ class NetworkOptimizer:
             "coverage_improvement_pct": np.round(pct_covered_after - pct_covered_before, 1)
         }
 
+    def calculate_brand_coverage(self, threshold_km=5.0):
+        """Calculates population-weighted BSS coverage percentages for each operator brand."""
+        if self.grid_points is None:
+            self.load_data()
+            
+        brands = self.existing_stations["brand"].unique()
+        coverage_by_brand = {}
+        total_weight = self.grid_points["weight"].sum()
+        
+        for brand in brands:
+            brand_stations = self.existing_stations[self.existing_stations["brand"] == brand]
+            covered_flags = []
+            for _, pt in self.grid_points.iterrows():
+                dists = haversine_distance_vectorized(pt["lat"], pt["lon"], brand_stations["lat"].values, brand_stations["lon"].values)
+                min_dist = np.min(dists)
+                covered_flags.append(1 if min_dist <= threshold_km else 0)
+            
+            coverage_pct = (np.array(covered_flags) * self.grid_points["weight"]).sum() / total_weight * 100.0
+            coverage_by_brand[brand] = np.round(coverage_pct, 1)
+            
+        return coverage_by_brand
+
+    def recalculate_rider_distances(self, df_recs, riders_df):
+        """Recalculates distances to the nearest BSS for all riders incorporating recommended stations."""
+        if len(df_recs) == 0:
+            return riders_df["Distance_to_BSS_km"].values
+            
+        new_lats = df_recs["Latitude"].values
+        new_lons = df_recs["Longitude"].values
+        
+        all_lats = np.concatenate([self.existing_stations["lat"].values, new_lats])
+        all_lons = np.concatenate([self.existing_stations["lon"].values, new_lons])
+        
+        new_distances = []
+        for _, rider in riders_df.iterrows():
+            dists = haversine_distance_vectorized(rider["Latitude"], rider["Longitude"], all_lats, all_lons)
+            new_distances.append(np.min(dists))
+            
+        return np.round(new_distances, 2)
+
 if __name__ == "__main__":
     import os
     if os.path.exists("data/nairobi_subcounties.csv") and os.path.exists("data/existing_stations.csv"):

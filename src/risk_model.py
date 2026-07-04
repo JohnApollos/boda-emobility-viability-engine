@@ -76,6 +76,32 @@ class PAYGRiskModel:
         prob = 1.0 / (1.0 + np.exp(-z))
         return prob
 
+    def evaluate_portfolio_risk(self, riders_df, new_distances=None):
+        """Evaluates portfolio default rates using the trained model and optional new BSS distances."""
+        if not self.is_trained:
+            raise ValueError("Model is not trained yet!")
+            
+        df_copy = riders_df.copy()
+        if new_distances is not None:
+            df_copy["Distance_to_BSS_km"] = new_distances
+            
+        # Extract features and scale
+        X = df_copy[self.features]
+        X_scaled = self.scaler.transform(X)
+        
+        # Predict default probability for the entire portfolio
+        probs = self.model.predict_proba(X_scaled)[:, 1]
+        
+        # Calculate key metrics
+        avg_default_prob = np.mean(probs)
+        high_risk_count = np.sum(probs > 0.15) # 15% default threshold
+        
+        return {
+            "expected_default_rate": np.round(avg_default_prob * 100.0, 2),
+            "high_risk_riders_count": int(high_risk_count),
+            "high_risk_riders_pct": np.round((high_risk_count / len(riders_df)) * 100.0, 1)
+        }
+
 def get_trained_model(data_path="data/rider_loans.csv"):
     model = PAYGRiskModel()
     model.train(data_path)

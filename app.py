@@ -276,6 +276,15 @@ kplc_tariff = st.sidebar.slider(
     help="KPLC approved base rate for e-mobility charging is KES 17.00/kWh."
 )
 
+n_rec = st.sidebar.slider(
+    "New Stations to Optimize (Count)",
+    min_value=3,
+    max_value=20,
+    value=10,
+    step=1,
+    help="Number of new swap station locations to be optimized via weighted K-Means."
+)
+
 st.sidebar.markdown("""
 <div style="background-color: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 14px; margin-top: 30px;">
     <h6 style="margin: 0 0 6px 0; color: #ffffff; font-weight: 700; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em;">Integrated Data Sources</h6>
@@ -365,6 +374,56 @@ with tab1:
         df_sub_display["density"] = df_sub_display["density"].apply(lambda x: f"{x:,}")
         df_sub_display.columns = ["Sub-County", "Population", "Area (sq km)", "Density (Pop/sq km)"]
         st.markdown(render_html_table(df_sub_display), unsafe_allow_html=True)
+
+    st.write("")
+    st.markdown("#### Diurnal Operating Profile: Daily Trips vs. Swap Probability")
+    st.markdown("""
+    Rider behavior is heavily structured. Evening trip peaks (17:00–18:00) coincide with a steep drop in battery swapping 
+    probability, as riders prioritize passenger volume and avoid stopping during high-fare windows. Morning shifts, however, 
+    witness high swap volumes at higher state-of-charge (SoC) levels as riders prep for their shifts.
+    """)
+    
+    hours_list = list(range(24))
+    trips_curve = [3, 2, 1, 1, 3, 10, 25, 45, 60, 65, 55, 50, 48, 52, 58, 68, 85, 100, 75, 55, 38, 25, 15, 8]
+    swaps_curve = [1.5, 0.8, 0.5, 0.5, 1.2, 5.5, 18.0, 38.0, 55.0, 62.0, 52.0, 42.0, 38.0, 40.0, 42.0, 48.0, 65.0, 42.0, 58.0, 48.0, 32.0, 20.0, 10.0, 4.5]
+    
+    fig_diurnal = go.Figure()
+    fig_diurnal.add_trace(go.Scatter(
+        x=hours_list, y=trips_curve,
+        mode='lines+markers',
+        name='Relative Daily Trips (Passenger Volume)',
+        line=dict(color='#6366f1', width=3),
+        marker=dict(size=6)
+    ))
+    fig_diurnal.add_trace(go.Scatter(
+        x=hours_list, y=swaps_curve,
+        mode='lines+markers',
+        name='Battery Swap Probability',
+        line=dict(color='#f59e0b', width=3, dash='dash'),
+        marker=dict(size=6)
+    ))
+    fig_diurnal.add_annotation(
+        x=17, y=42,
+        text="Evening Rush Hour Dip (Riders avoid BSS)",
+        showarrow=True,
+        arrowhead=2,
+        arrowcolor="#ef4444",
+        ax=-70, ay=-40,
+        font=dict(color="#f8fafc", size=10),
+        bgcolor="#ef444488"
+    )
+    fig_diurnal.update_layout(
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font_color='#f8fafc',
+        xaxis=dict(title="Hour of Day (00:00 - 23:00)", tickmode='linear', tick0=0, dtick=2, showgrid=True, gridcolor='rgba(255,255,255,0.05)'),
+        yaxis=dict(title="Relative Index (%)", showgrid=True, gridcolor='rgba(255,255,255,0.05)'),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        margin=dict(l=40, r=40, t=30, b=40),
+        height=320
+    )
+    st.plotly_chart(fig_diurnal, use_container_width=True)
+
 
 
 # -----------------
@@ -479,6 +538,31 @@ with tab2:
             st.markdown(render_html_table(gap_summary), unsafe_allow_html=True)
         else:
             st.info("No coverage gaps found. Current BSS footprint satisfies requirements.")
+            
+        st.write("")
+        st.markdown("""
+        <div class="dashboard-card" style="margin-top: 15px; padding: 16px; margin-bottom: 0px;">
+            <h5 style="margin-top: 0; color: #ffffff; font-weight: 700; font-size: 0.95rem;">Competitor Coverage Share</h5>
+            <p style="font-size: 0.8rem; color: #94a3b8; margin: 0 0 15px 0;">Percentage of Nairobi's populated points covered by each provider independently.</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        brand_coverages = optimizer.calculate_brand_coverage(threshold_km=swap_radius_input)
+        
+        # Display each brand's coverage rate
+        for brand, cov in brand_coverages.items():
+            color = "#10b981" if brand == "Ampersand" else ("#3b82f6" if brand == "Spiro" else "#f59e0b")
+            st.markdown(f"""
+            <div style="margin-bottom: 12px; background-color: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-size: 0.85rem;">
+                    <span style="font-weight: 600; color: #e2e8f0;">{brand} Network</span>
+                    <span style="font-weight: 700; color: {color};">{cov}%</span>
+                </div>
+                <div style="background-color: #0f172a; border-radius: 3px; height: 6px; width: 100%; overflow: hidden;">
+                    <div style="background-color: {color}; width: {cov}%; height: 100%; border-radius: 3px;"></div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
 
 # -----------------
@@ -545,6 +629,44 @@ with tab3:
         """, unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
         
+        # Portfolio Credit Mitigation Feedback Loop
+        st.write("")
+        st.markdown("""
+        <h5 style="margin-top: 15px; margin-bottom: 10px; color: #ffffff; font-weight: 700; font-size: 0.95rem;">Portfolio Credit Risk Projections</h5>
+        """, unsafe_allow_html=True)
+        
+        # Calculate new distances incorporating Tab 4 recommendations
+        df_recs = optimizer.recommend_stations(n_stations=n_rec, gap_threshold_km=swap_radius_input)
+        new_dists = optimizer.recalculate_rider_distances(df_recs, riders_df)
+        
+        risk_before = risk_model.evaluate_portfolio_risk(riders_df)
+        risk_after = risk_model.evaluate_portfolio_risk(riders_df, new_dists)
+        
+        # Expected Loss calculation (Average vehicle cost KES 450,000)
+        mitigated_loss = (risk_before['expected_default_rate'] - risk_after['expected_default_rate']) / 100.0 * 1000 * 450000
+        
+        st.markdown(f"""
+        <div class="dashboard-card" style="padding: 16px; margin-bottom: 0px;">
+            <div style="font-size: 0.8rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; margin-bottom: 12px;">GIS-Credit Feedback Loop</div>
+            
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem;">
+                <span style="color: #94a3b8;">Portfolio Default Rate:</span>
+                <span style="font-weight: 700; color: #ffffff;">{risk_before['expected_default_rate']:.2f}% &rarr; <span style="color: #10b981;">{risk_after['expected_default_rate']:.2f}%</span></span>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem;">
+                <span style="color: #94a3b8;">High-Risk Riders (>15%):</span>
+                <span style="font-weight: 700; color: #ffffff;">{risk_before['high_risk_riders_count']} &rarr; <span style="color: #10b981;">{risk_after['high_risk_riders_count']}</span></span>
+            </div>
+            
+            <div style="border-top: 1px solid #334155; margin-top: 12px; padding-top: 12px;">
+                <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px;">Capital Exposure Mitigated</div>
+                <div style="font-size: 1.4rem; font-weight: 800; color: #10b981;">KES {mitigated_loss:,.0f}</div>
+                <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 4px;">Based on a fleet size of 1,000 riders. Adding <b>{n_rec} new stations</b> reduces overall default exposure.</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
     with col_model:
         st.markdown("#### Model Standardized Feature Importances")
         st.markdown("""
@@ -592,7 +714,35 @@ with tab4:
     
     col_input4, col_metrics4 = st.columns([1, 2])
     with col_input4:
-        n_rec = st.number_input("Station CapEx Budget (Count to Deploy)", min_value=3, max_value=20, value=10, step=1)
+        # Coordinated off-peak charging savings (ChargeUp! Page 13)
+        daily_energy = n_rec * 12 * 1.5
+        cost_flat = daily_energy * kplc_tariff
+        cost_offpeak = daily_energy * 0.68 * kplc_tariff # ~32% ToU coordinated savings
+        savings_daily = cost_flat - cost_offpeak
+        savings_annual = savings_daily * 300
+        
+        st.markdown(f"""
+        <div class="dashboard-card" style="padding: 16px; margin-bottom: 0px;">
+            <div style="font-size: 0.8rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; margin-bottom: 12px;">Coordinated Grid Load Savings</div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem;">
+                <span style="color: #94a3b8;">Est. Charging Load ({n_rec} BSS):</span>
+                <span style="font-weight: 700; color: #ffffff;">{daily_energy:,.0f} kWh / Day</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem;">
+                <span style="color: #94a3b8;">Flat Tariff Cost (Daily):</span>
+                <span style="font-weight: 700; color: #ef4444;">KES {cost_flat:,.0f}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem;">
+                <span style="color: #94a3b8;">Shifted ToU Cost (Daily):</span>
+                <span style="font-weight: 700; color: #10b981;">KES {cost_offpeak:,.0f}</span>
+            </div>
+            <div style="border-top: 1px solid #334155; margin-top: 12px; padding-top: 12px;">
+                <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px;">Annual Energy Savings</div>
+                <div style="font-size: 1.4rem; font-weight: 800; color: #10b981;">KES {savings_annual:,.0f}</div>
+                <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 4px;">By shifting charging loads to off-peak hours (22:00-06:00) using KPLC Time-of-Use rates.</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
         
     df_recs = optimizer.recommend_stations(n_stations=n_rec, gap_threshold_km=swap_radius_input)
     impact = optimizer.evaluate_expansion_impact(df_recs)
@@ -808,3 +958,75 @@ with tab5:
                 <b>KES {margin_16 - petrol_net:.0f}/day</b> over petrol. The credit profile remains stable.
             </div>
             """, unsafe_allow_html=True)
+
+    st.markdown("<hr style='border-color:#334155; margin:30px 0;'>", unsafe_allow_html=True)
+    st.markdown("### Component 6: ESG Carbon Offset & Climate Finance Calculator")
+    st.markdown("""
+    E-mobility adoption in East Africa is heavily subsidized and financed by **international carbon credits** and ESG funding. 
+    This calculator projects the annual greenhouse gas (GHG) savings of transitioning a fleet of **5,000 boda bodas** 
+    to electric operations, based on the actual carbon intensity of the Kenyan power grid.
+    """)
+    
+    col_esg_left, col_esg_right = st.columns([1, 2])
+    
+    # Calculate emissions metrics
+    fleet_size = 5000
+    operating_days = 300
+    total_km_annual = fleet_size * daily_km_slider * operating_days
+    
+    # Petrol Baseline
+    petrol_liters_annual = total_km_annual / 35.0
+    co2_petrol_annual = (petrol_liters_annual * 3.1) / 1000.0
+    
+    # Electric (Actual Kenya Grid - 90% Hydro/Geothermal/Wind)
+    energy_kwh_annual = total_km_annual * 0.06
+    co2_elec_renew = (energy_kwh_annual * 0.05) / 1000.0 # 50g CO2/kWh
+    
+    # Electric (Fossil Backup Grid - Thermal Heavy)
+    co2_elec_fossil = (energy_kwh_annual * 0.45) / 1000.0 # 450g CO2/kWh
+    
+    net_offset_tons = co2_petrol_annual - co2_elec_renew
+    
+    with col_esg_left:
+        st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
+        st.markdown("<h5 style='margin-top:0; color:#ffffff; font-weight: 700;'>Climate Finance Model</h5>", unsafe_allow_html=True)
+        
+        carbon_price = st.slider("Carbon Credit Value (USD / Ton CO2)", 5.0, 50.0, 15.0, 1.0)
+        exchange_rate = 130.0 # KES per USD
+        
+        revenue_usd = net_offset_tons * carbon_price
+        revenue_kes = revenue_usd * exchange_rate
+        
+        st.markdown(f"""
+        <div style="border-top: 1px solid #334155; margin-top: 12px; padding-top: 12px;">
+            <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px;">Annual Net CO2 Offset</div>
+            <div style="font-size: 1.6rem; font-weight: 800; color: #10b981;">{net_offset_tons:,.0f} Tons</div>
+        </div>
+        <div style="margin-top: 12px;">
+            <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px;">Est. Carbon Credit Revenue</div>
+            <div style="font-size: 1.6rem; font-weight: 800; color: #10b981;">KES {revenue_kes:,.0f}</div>
+            <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 4px;">(USD {revenue_usd:,.0f} per year at KES {exchange_rate:.0f}/USD)</div>
+        </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+    with col_esg_right:
+        # Plotly bar chart
+        fig_esg = go.Figure()
+        fig_esg.add_trace(go.Bar(
+            x=["Petrol Baseline Fleet", "Electric Fleet (Actual Grid)", "Electric Fleet (Fossil Grid)"],
+            y=[co2_petrol_annual, co2_elec_renew, co2_elec_fossil],
+            marker_color=["#ef4444", "#10b981", "#f59e0b"],
+            text=[f"{co2_petrol_annual:,.0f}t", f"{co2_elec_renew:,.0f}t", f"{co2_elec_fossil:,.0f}t"],
+            textposition='auto',
+        ))
+        fig_esg.update_layout(
+            title="Annual Carbon Emissions (Metric Tons of CO2 / Year)",
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font_color='#f8fafc',
+            yaxis_title="Metric Tons CO2",
+            yaxis_showgrid=True,
+            yaxis_gridcolor='rgba(255,255,255,0.08)'
+        )
+        st.plotly_chart(fig_esg, use_container_width=True)
