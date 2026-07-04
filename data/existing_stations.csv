@@ -1,0 +1,21 @@
+name,brand,lat,lon,cabinets,grid_reliability
+Ampersand - TotalEnergies Hurlingham,Ampersand,-1.2941,36.8025,2,0.95
+Ampersand - TotalEnergies Dagoretti,Ampersand,-1.3025,36.735,1,0.88
+Ampersand - TotalEnergies Mountain View,Ampersand,-1.262,36.745,2,0.9
+Ampersand - TotalEnergies Limuru Road,Ampersand,-1.2405,36.82,1,0.92
+Ampersand - TotalEnergies Gigiri,Ampersand,-1.233,36.803,2,0.96
+Ampersand - TotalEnergies Mombasa Road,Ampersand,-1.34,36.89,2,0.94
+Ampersand - TotalEnergies Westlands,Ampersand,-1.265,36.8,3,0.95
+Ampersand - TotalEnergies Thika Road,Ampersand,-1.222,36.885,2,0.89
+Spiro - Petrocity Westlands,Spiro,-1.264,36.804,2,0.95
+Spiro - Petrocity Gigiri,Spiro,-1.235,36.815,1,0.96
+Spiro - Petrocity Mombasa Road,Spiro,-1.332,36.875,2,0.93
+Spiro - Petrocity Ngong Road,Spiro,-1.301,36.772,2,0.91
+Spiro - Petrocity Industrial Area,Spiro,-1.312,36.845,3,0.94
+Spiro - Petrocity Karen,Spiro,-1.325,36.72,1,0.9
+Spiro - Petrocity Outering Road,Spiro,-1.275,36.895,2,0.87
+ARC Ride - OLA Energy Peponi Road,ARC Ride,-1.258,36.802,2,0.95
+ARC Ride - OLA Energy Ngong Road,ARC Ride,-1.3,36.762,2,0.91
+ARC Ride - OLA Energy Lusaka Road,ARC Ride,-1.305,36.835,2,0.93
+ARC Ride HQ (Enterprise Road),ARC Ride,-1.32,36.865,4,0.95
+ARC Ride - OLA Energy Kiambu Road,ARC Ride,-1.205,36.845,1,0.91

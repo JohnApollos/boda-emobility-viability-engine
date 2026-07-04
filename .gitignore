@@ -1,0 +1,19 @@
+# Python caches
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Large spatial databases and maps
+*.mbtiles
+*.db
+*.sqlite
+
+# OS and IDE configuration files
+desktop.ini
+.DS_Store
+.vscode/
+.idea/
+
+# Local agent scratch workspace
+scratch/
+.system_generated/
