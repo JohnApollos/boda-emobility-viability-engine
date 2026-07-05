@@ -266,10 +266,21 @@ optimizer = get_optimizer()
 # Title banner
 st.markdown("""
 <div class="banner-card">
-    <h1 style="margin: 0; color: #ffffff; font-size: 1.8rem; font-weight: 800; letter-spacing: -0.02em;">Kenya Boda Boda E-Mobility Viability Engine</h1>
-    <p style="margin: 6px 0 0 0; color: #94a3b8; font-size: 0.95rem; max-width: 900px; line-height: 1.4;">
-        A data-driven spatial optimization and credit risk modeling framework designed to resolve the network expansion chicken-and-egg problem for Nairobi's e-motorcycle swap providers.
-    </p>
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+        <div>
+            <h1 style="margin: 0; color: #ffffff; font-size: 1.8rem; font-weight: 800; letter-spacing: -0.02em;">Kenya Boda Boda E-Mobility Viability Engine</h1>
+            <p style="margin: 6px 0 0 0; color: #94a3b8; font-size: 0.95rem; max-width: 900px; line-height: 1.4;">
+                A data-driven spatial optimization and credit risk modeling framework designed to resolve the network expansion chicken-and-egg problem for Nairobi's e-motorcycle swap providers.
+            </p>
+        </div>
+        <div>
+            <a href="https://boda-emobility.streamlit.app/" target="_blank" style="text-decoration: none;">
+                <div style="background-color: #14b8a6; color: #0f172a; padding: 8px 16px; border-radius: 4px; font-weight: 700; font-size: 0.85rem; box-shadow: 0 0 10px rgba(20, 184, 166, 0.3);">
+                    LIVE CLOUD VERSION
+                </div>
+            </a>
+        </div>
+    </div>
 </div>
 """, unsafe_allow_html=True)
 

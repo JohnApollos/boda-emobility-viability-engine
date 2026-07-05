@@ -1,6 +1,8 @@
 # Kenya Boda Boda E-Mobility Viability Engine
 ### A Data-Driven Framework for Optimal Battery Swap Network Expansion and Credit Risk Management
 
+**Live Cloud Dashboard:** [boda-emobility.streamlit.app](https://boda-emobility.streamlit.app/)
+
 ---
 
 ## The Strategic Challenge
