@@ -274,9 +274,9 @@ st.markdown("""
             </p>
         </div>
         <div>
-            <a href="https://boda-emobility.streamlit.app/" target="_blank" style="text-decoration: none;">
-                <div style="background-color: #14b8a6; color: #0f172a; padding: 8px 16px; border-radius: 4px; font-weight: 700; font-size: 0.85rem; box-shadow: 0 0 10px rgba(20, 184, 166, 0.3);">
-                    LIVE CLOUD VERSION
+            <a href="https://github.com/JohnApollos/boda-emobility-viability-engine" target="_blank" style="text-decoration: none;">
+                <div style="background-color: #1e293b; color: #f8fafc; border: 1px solid #334155; padding: 8px 16px; border-radius: 6px; font-weight: 600; font-size: 0.85rem;">
+                    VIEW ON GITHUB
                 </div>
             </a>
         </div>
