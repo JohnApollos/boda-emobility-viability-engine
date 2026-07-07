@@ -17,170 +17,23 @@ st.set_page_config(
 )
 
 # Custom CSS for modern enterprise dashboard styling (Inter Typography, Slate Colors, Muted Accents)
-st.markdown("""
-<style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
-    
-    /* Font overrides */
-    html, body, [class*="css"], .stText, .stMarkdown {
-        font-family: 'Inter', sans-serif !important;
-    }
-    
-    /* Dark Slate Canvas background */
-    .stApp {
-        background-color: #0b0f19;
-        color: #f8fafc;
-    }
-    
-    /* Minimalist Card style */
-    .dashboard-card {
-        background-color: #1e293b;
-        border: 1px solid #334155;
-        border-radius: 8px;
-        padding: 20px;
-        margin-bottom: 20px;
-    }
-    
-    /* Banner style */
-    .banner-card {
-        background-color: #1e293b;
-        border-bottom: 2px solid #0d9488; /* Teal Accent */
-        border-radius: 0 0 8px 8px;
-        padding: 24px 30px;
-        margin-bottom: 30px;
-    }
-    
-    /* Premium Metric Box with CSS Grid */
-    .metric-container {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 15px;
-        margin-bottom: 25px;
-    }
-    
-    .metric-box {
-        background-color: #1e293b;
-        border: 1px solid #334155;
-        border-radius: 6px;
-        padding: 16px;
-        text-align: center;
-    }
-    
-    .metric-val {
-        font-size: 1.8rem;
-        font-weight: 700;
-        color: #10b981; /* Emerald */
-        margin-bottom: 4px;
-        line-height: 1.1;
-    }
-    
-    .metric-lbl {
-        font-size: 0.75rem;
-        color: #94a3b8;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        font-weight: 600;
-    }
-    
-    /* Custom Alerts */
-    .alert-panel {
-        border-left: 4px solid #ef4444; /* Muted Red */
-        background-color: #1e293b;
-        border-top: 1px solid #334155;
-        border-right: 1px solid #334155;
-        border-bottom: 1px solid #334155;
-        border-radius: 0 6px 6px 0;
-        padding: 16px;
-        margin: 15px 0;
-        color: #f1f5f9;
-        font-size: 0.9rem;
-    }
-    
-    .success-panel {
-        border-left: 4px solid #10b981; /* Muted Emerald */
-        background-color: #1e293b;
-        border-top: 1px solid #334155;
-        border-right: 1px solid #334155;
-        border-bottom: 1px solid #334155;
-        border-radius: 0 6px 6px 0;
-        padding: 16px;
-        margin: 15px 0;
-        color: #f1f5f9;
-        font-size: 0.9rem;
-    }
-    
-    /* Sidebar styling */
-    section[data-testid="stSidebar"] {
-        background-color: #0f172a !important;
-        border-right: 1px solid #1e293b !important;
-    }
-    
-    /* Tab Styling */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 6px;
-        border-bottom: 1px solid #1e293b;
-    }
-    .stTabs [data-baseweb="tab"] {
-        height: 44px;
-        background-color: #0f172a;
-        border: 1px solid #1e293b;
-        border-radius: 6px 6px 0 0;
-        padding: 0 16px;
-        color: #64748b;
-        font-weight: 500;
-        font-size: 0.875rem;
-        transition: all 0.2s ease;
-    }
-    .stTabs [aria-selected="true"] {
-        background-color: #1e293b !important;
-        border-color: #334155 #334155 transparent #334155 !important;
-        color: #14b8a6 !important; /* Teal */
-        font-weight: 600;
-    }
+def load_css(file_path: str) -> None:
+    """Loads a custom CSS stylesheet and injects it into the Streamlit app.
 
-    /* Premium Custom Table styling */
-    .custom-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.825rem;
-        color: #f1f5f9;
-        margin-top: 8px;
-    }
-    .custom-table th {
-        background-color: #0f172a;
-        color: #94a3b8;
-        text-align: left;
-        padding: 10px 12px;
-        font-weight: 600;
-        border-bottom: 2px solid #334155;
-        text-transform: uppercase;
-        font-size: 0.725rem;
-        letter-spacing: 0.05em;
-    }
-    .custom-table td {
-        padding: 10px 12px;
-        border-bottom: 1px solid #334155;
-        color: #e2e8f0;
-    }
-    .custom-table tr:hover {
-        background-color: rgba(255, 255, 255, 0.02);
-    }
+    Args:
+        file_path (str): Relative path to the CSS file.
+    """
+    if os.path.exists(file_path):
+        with open(file_path, "r") as f:
+            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+    else:
+        st.warning(f"Styling file not found at {file_path}. Reverting to standard layout.")
 
-    /* Responsive CSS Media Queries for Mobile Screens */
-    @media (max-width: 1024px) {
-        .metric-container {
-            grid-template-columns: repeat(2, 1fr) !important;
-        }
-    }
-    @media (max-width: 640px) {
-        .metric-container {
-            grid-template-columns: 1fr !important;
-        }
-    }
-</style>
-""", unsafe_allow_html=True)
+# Apply custom enterprise styles
+load_css("src/style.css")
 
 # Imports from src
+from typing import Tuple, Optional
 from src.data_processor import generate_datasets, haversine_distance
 from src.risk_model import PAYGRiskModel
 from src.optimizer import NetworkOptimizer, haversine_distance_vectorized
@@ -190,12 +43,34 @@ if not os.path.exists("data/rider_loans.csv") or not os.path.exists("data/existi
     with st.spinner("Initializing system and generating realistic spatial and rider datasets..."):
         generate_datasets()
 
-def render_html_table(df):
-    """Converts a pandas DataFrame to a beautiful custom HTML table fitting the dark dashboard style."""
+def render_html_table(df: pd.DataFrame) -> str:
+    """Converts a pandas DataFrame to a beautiful custom HTML table fitting the dark dashboard style.
+
+    Args:
+        df (pd.DataFrame): The input DataFrame.
+
+    Returns:
+        str: Styled HTML table representation.
+    """
     return df.to_html(classes="custom-table", index=False, escape=False)
 
-def calculate_rider_distances_custom(riders_df, stations_df, df_recs=None, enable_interop=False):
-    """Calculates distances to the nearest swap station for all riders incorporating optional brand interoperability."""
+def calculate_rider_distances_custom(
+    riders_df: pd.DataFrame, 
+    stations_df: pd.DataFrame, 
+    df_recs: Optional[pd.DataFrame] = None, 
+    enable_interop: bool = False
+) -> np.ndarray:
+    """Calculates distances to the nearest swap station for all riders incorporating optional brand interoperability.
+
+    Args:
+        riders_df (pd.DataFrame): Dataframe containing rider locations.
+        stations_df (pd.DataFrame): Dataframe of existing swap stations.
+        df_recs (Optional[pd.DataFrame]): Optional Dataframe of proposed optimized station coordinates.
+        enable_interop (bool): True if open network sharing is enabled between Ampersand and ARC Ride.
+
+    Returns:
+        np.ndarray: Vector of updated nearest station distances in kilometers.
+    """
     distances = []
     for idx, rider in riders_df.iterrows():
         # Fallback if Brand column is not in CSV
@@ -237,7 +112,12 @@ def calculate_rider_distances_custom(riders_df, stations_df, df_recs=None, enabl
 
 # Load datasets
 @st.cache_data
-def load_cached_data():
+def load_cached_data() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Loads Nairobi demographics, existing swap stations, and rider profiles from CSV cache.
+
+    Returns:
+        Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]: Subcounties, stations, and rider profiles.
+    """
     subcounties = pd.read_csv("data/nairobi_subcounties.csv")
     existing_stations = pd.read_csv("data/existing_stations.csv")
     riders = pd.read_csv("data/rider_loans.csv")
@@ -247,7 +127,12 @@ subcounties_df, stations_df, riders_df = load_cached_data()
 
 # Initialize and train risk model
 @st.cache_resource
-def get_risk_model():
+def get_risk_model() -> PAYGRiskModel:
+    """Instantiates and trains the PAYG Credit Risk Model.
+
+    Returns:
+        PAYGRiskModel: A trained credit risk model instance.
+    """
     model = PAYGRiskModel()
     model.train()
     return model
@@ -256,7 +141,12 @@ risk_model = get_risk_model()
 
 # Initialize spatial optimizer
 @st.cache_resource
-def get_optimizer():
+def get_optimizer() -> NetworkOptimizer:
+    """Instantiates and configures the spatial facility location optimizer.
+
+    Returns:
+        NetworkOptimizer: A configured spatial optimizer.
+    """
     opt = NetworkOptimizer()
     opt.load_data()
     return opt
