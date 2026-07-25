@@ -802,6 +802,17 @@ with tab4:
             display_recs["Distance_to_Existing_km"] = display_recs["Distance_to_Existing_km"].apply(lambda x: f"{x:.2f} km")
             display_recs.columns = ["Rec ID", "Sub-County", "Viability /100", "Distance to Network"]
             st.markdown(render_html_table(display_recs), unsafe_allow_html=True)
+            
+            # Export CSV capability
+            csv_data = df_recs.to_csv(index=False).encode('utf-8')
+            st.write("")
+            st.download_button(
+                label="📥 EXPORT EXPANSION REPORT (CSV)",
+                data=csv_data,
+                file_name="nairobi_emobility_expansion_recs.csv",
+                mime="text/csv",
+                help="Download full coordinate coordinates and multi-criteria scores for the optimized stations."
+            )
         else:
             st.info("No recommendations needed. No coverage gaps exist.")
 
