@@ -42,6 +42,21 @@ WEIGHT_CONNECTIVITY: float = 0.30
 WEIGHT_GRID_STABILITY: float = 0.15
 WEIGHT_ROAD_ACCESS: float = 0.15
 
+# Subcounty-specific road route detour coefficients (terrain and congestion adjustments)
+SUBCOUNTY_DETOUR_FACTORS: Dict[str, float] = {
+    "Starehe": 1.60,      # CBD / Congestion Heavy
+    "Kibra": 1.70,        # High Informal Settlement Density
+    "Mathare": 1.70,      # Informal Settlement Density
+    "Makadara": 1.50,     # Industrial Grid/Truck Traffic
+    "Kamukunji": 1.50,    # Trading Hub / Congestion
+    "Dagoretti": 1.35,    # Hilly / Winding suburban roads
+    "Westlands": 1.30,    # Busy commercial nodes
+    "Embakasi": 1.30,     # Commercial highway corridor
+    "Kasarani": 1.25,     # Open suburban roads
+    "Lang'ata": 1.25,     # Open suburban roads
+    "Njiru": 1.25         # Open peripheral areas
+}
+
 class OptimizationError(Exception):
     """Raised when spatial optimization cannot be completed due to invalid grid states."""
     pass
@@ -398,9 +413,12 @@ class NetworkOptimizer:
         new_distances: List[float] = []
         for _, rider in riders_df.iterrows():
             dists = haversine_distance_vectorized(rider["Latitude"], rider["Longitude"], all_lats, all_lons)
-            new_distances.append(float(np.min(dists)))
+            min_dist = float(np.min(dists))
+            subcounty_name = rider.get("Subcounty", "Nairobi City")
+            factor = SUBCOUNTY_DETOUR_FACTORS.get(subcounty_name, 1.30)
+            new_distances.append(float(np.round(min_dist * factor, 2)))
             
-        return np.round(new_distances, 2)
+        return np.array(new_distances)
 
 
 if __name__ == "__main__":

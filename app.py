@@ -36,7 +36,7 @@ load_css("src/style.css")
 from typing import Tuple, Optional
 from src.data_processor import generate_datasets, haversine_distance
 from src.risk_model import PAYGRiskModel
-from src.optimizer import NetworkOptimizer, haversine_distance_vectorized
+from src.optimizer import NetworkOptimizer, haversine_distance_vectorized, SUBCOUNTY_DETOUR_FACTORS
 
 # Check if data exists; if not, generate it
 if not os.path.exists("data/rider_loans.csv") or not os.path.exists("data/existing_stations.csv"):
@@ -106,9 +106,12 @@ def calculate_rider_distances_custom(
             all_lons = np.concatenate([all_lons, df_recs["Longitude"].values])
             
         dists = haversine_distance_vectorized(rider["Latitude"], rider["Longitude"], all_lats, all_lons)
-        distances.append(np.min(dists))
+        min_dist = float(np.min(dists))
+        subcounty_name = rider.get("Subcounty", "Nairobi City")
+        factor = SUBCOUNTY_DETOUR_FACTORS.get(subcounty_name, 1.30)
+        distances.append(float(np.round(min_dist * factor, 2)))
         
-    return np.round(distances, 2)
+    return np.array(distances)
 
 # Load datasets
 @st.cache_data
@@ -602,8 +605,14 @@ with tab3:
         # Portfolio Credit Mitigation Feedback Loop
         st.write("")
         st.markdown("""
-        <h5 style="margin-top: 15px; margin-bottom: 10px; color: #ffffff; font-weight: 700; font-size: 0.95rem;">Portfolio Credit Risk Projections</h5>
+        <h5 style="margin-top: 15px; margin-bottom: 10px; color: #ffffff; font-weight: 700; font-size: 0.95rem;">Portfolio Credit Risk & Expected Loss Projections</h5>
         """, unsafe_allow_html=True)
+        
+        enable_lockouts = st.checkbox(
+            "Activate Telematics Remote Lockouts (Repossession Mode)",
+            value=True,
+            help="IoT-enabled remote engine lockout allows recovery of the asset upon default. Drops Loss Given Default (LGD) from 75% to 15%."
+        )
         
         # Calculate new distances incorporating Tab 4 recommendations
         df_recs = optimizer.recommend_stations(n_stations=n_rec, gap_threshold_km=swap_radius_input)
@@ -615,11 +624,16 @@ with tab3:
         risk_before = risk_model.evaluate_portfolio_risk(riders_df, dists_baseline)
         risk_after = risk_model.evaluate_portfolio_risk(riders_df, dists_current)
         
-        # Expected Loss calculation (Average vehicle cost KES 450,000)
-        mitigated_loss = (risk_before['expected_default_rate'] - risk_after['expected_default_rate']) / 100.0 * 1000 * 450000
+        # Financial parameters
+        ead_value = 450000.0  # Average asset lease exposure (KES)
+        lgd_factor = 0.15 if enable_lockouts else 0.75
+        
+        el_before = (risk_before['expected_default_rate'] / 100.0) * 1000 * ead_value * lgd_factor
+        el_after = (risk_after['expected_default_rate'] / 100.0) * 1000 * ead_value * lgd_factor
+        mitigated_loss = el_before - el_after
         
         st.markdown(f"""<div class="dashboard-card" style="padding: 16px; margin-bottom: 0px;">
-<div style="font-size: 0.8rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; margin-bottom: 12px;">GIS-Credit Feedback Loop</div>
+<div style="font-size: 0.8rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; margin-bottom: 12px;">GIS-Credit Underwriter Loop</div>
 <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem;">
 <span style="color: #94a3b8;">Portfolio Default Rate:</span>
 <span style="font-weight: 700; color: #ffffff;">{risk_before['expected_default_rate']:.2f}% &rarr; <span style="color: #10b981;">{risk_after['expected_default_rate']:.2f}%</span></span>
@@ -628,10 +642,18 @@ with tab3:
 <span style="color: #94a3b8;">High-Risk Riders (>15%):</span>
 <span style="font-weight: 700; color: #ffffff;">{risk_before['high_risk_riders_count']} &rarr; <span style="color: #10b981;">{risk_after['high_risk_riders_count']}</span></span>
 </div>
+<div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem;">
+<span style="color: #94a3b8;">Loss Given Default (LGD):</span>
+<span style="font-weight: 700; color: {"#10b981;" if enable_lockouts else "#ef4444;"}">{lgd_factor * 100:.0f}% {"(IoT Active)" if enable_lockouts else "(Manual Hunt)"}</span>
+</div>
+<div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem;">
+<span style="color: #94a3b8;">Expected Portfolio Loss:</span>
+<span style="font-weight: 700; color: #ffffff;">KES {el_before:,.0f} &rarr; <span style="color: #10b981;">KES {el_after:,.0f}</span></span>
+</div>
 <div style="border-top: 1px solid #334155; margin-top: 12px; padding-top: 12px;">
 <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px;">Capital Exposure Mitigated</div>
 <div style="font-size: 1.4rem; font-weight: 800; color: #10b981;">KES {mitigated_loss:,.0f}</div>
-<div style="font-size: 0.75rem; color: #94a3b8; margin-top: 4px;">Based on a fleet size of 1,000 riders. {"Interoperability and adding" if enable_interop else "Adding"} <b>{n_rec} new stations</b> reduces overall default exposure.</div>
+<div style="font-size: 0.75rem; color: #94a3b8; margin-top: 4px;">Based on 1,000 riders at KES {ead_value:,.0f} lease exposure. IoT security paired with {"interoperability and adding" if enable_interop else "adding"} <b>{n_rec} stations</b> reduces overall cash losses.</div>
 </div>
 </div>""", unsafe_allow_html=True)
         
@@ -708,6 +730,42 @@ with tab4:
                 <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px;">Annual Energy Savings</div>
                 <div style="font-size: 1.4rem; font-weight: 800; color: #10b981;">KES {savings_annual:,.0f}</div>
                 <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 4px;">By shifting charging loads to off-peak hours (22:00-06:00) using KPLC Time-of-Use rates.</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Battery Degradation & State-of-Health (SoH) Calculator
+        battery_cost = 120000.0  # Cost per battery pack (KES)
+        fleet_size_esg = 5000
+        
+        dep_uncoordinated = (battery_cost / 1.5) * fleet_size_esg  # 1.5 years life
+        dep_coordinated = (battery_cost / 3.0) * fleet_size_esg    # 3.0 years life
+        capex_savings = dep_uncoordinated - dep_coordinated
+        
+        st.write("")
+        st.markdown(f"""
+        <div class="dashboard-card" style="padding: 16px; margin-top: 15px; margin-bottom: 0px;">
+            <div style="font-size: 0.8rem; color: #94a3b8; font-weight: 600; text-transform: uppercase; margin-bottom: 12px;">Battery Lifecycle Economics (5k Fleet)</div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem;">
+                <span style="color: #94a3b8;">Uncoordinated SoH Life:</span>
+                <span style="font-weight: 700; color: #ef4444;">1.5 Years (500 cycles)</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem;">
+                <span style="color: #94a3b8;">Coordinated SoH Life:</span>
+                <span style="font-weight: 700; color: #10b981;">3.0 Years (1,000 cycles)</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem;">
+                <span style="color: #94a3b8;">Peak Depreciation / Year:</span>
+                <span style="font-weight: 700; color: #ef4444;">KES {dep_uncoordinated:,.0f}</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.85rem;">
+                <span style="color: #94a3b8;">Night Depreciation / Year:</span>
+                <span style="font-weight: 700; color: #10b981;">KES {dep_coordinated:,.0f}</span>
+            </div>
+            <div style="border-top: 1px solid #334155; margin-top: 12px; padding-top: 12px;">
+                <div style="font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px;">Annual CapEx Saved</div>
+                <div style="font-size: 1.4rem; font-weight: 800; color: #10b981;">KES {capex_savings:,.0f}</div>
+                <div style="font-size: 0.75rem; color: #94a3b8; margin-top: 4px;">By shifting charging to off-peak periods, cell operating temperatures are regulated, doubling anode lifespan.</div>
             </div>
         </div>
         """, unsafe_allow_html=True)
