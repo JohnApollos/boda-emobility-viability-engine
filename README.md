@@ -3,6 +3,9 @@
 
 **Live Cloud Dashboard:** [boda-emobility.streamlit.app](https://boda-emobility.streamlit.app/)
 
+> *"Insightful analysis on EV charging station deployment."*  
+> — **Nabil Anjarwalla**, CEO, Greenwheels
+
 ---
 
 ## The Strategic Challenge
